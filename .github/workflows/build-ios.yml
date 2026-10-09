@@ -16,24 +16,28 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode Version
-        run: |
-          sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
-          xcodebuild -version
+      - name: Show Xcode Version
+        run: xcodebuild -version
 
-      - name: Build Archive for Device
+      - name: Build App for iOS Device
         run: |
-          xcodebuild archive \
+          xcodebuild \
             -project MZVCPhonebook.xcodeproj \
             -scheme MZVCPhonebook \
+            -configuration Release \
             -destination "generic/platform=iOS" \
-            -archivePath build/MZVCPhonebook.xcarchive \
-            CODE_SIGNING_ALLOWED=NO
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
       - name: Package Installable IPA
         run: |
           mkdir -p Payload
-          cp -r build/MZVCPhonebook.xcarchive/Products/Applications/MZVCPhonebook.app Payload/
+          APP_PATH=$(find build -name "MZVCPhonebook.app" -type d | head -n 1)
+          echo "Found built app at: $APP_PATH"
+          cp -r "$APP_PATH" Payload/
           zip -qr MZVCPhonebook.ipa Payload
           mkdir -p output
           mv MZVCPhonebook.ipa output/
@@ -43,9 +47,4 @@ jobs:
         with:
           name: MZVCPhonebook-iOS-IPA
           path: output/MZVCPhonebook.ipa
-
-      - name: Upload Full Xcode Archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: MZVCPhonebook-Xcode-Archive
-          path: build/MZVCPhonebook.xcarchive
+          if-no-files-found: error
