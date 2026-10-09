@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build MZVCPhonebook iOS App
@@ -15,9 +18,13 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Show Xcode Version
-        run: xcodebuild -version
+      - name: Show Xcode & SDKs
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
 
       - name: Build App for iOS Device
         run: |
@@ -26,15 +33,14 @@ jobs:
             -project MZVCPhonebook.xcodeproj \
             -scheme MZVCPhonebook \
             -configuration Release \
-            -destination "generic/platform=iOS" \
+            -sdk iphoneos \
             -derivedDataPath build \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=YES \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
             build 2>&1 | tee xcodebuild.log || {
-              echo "==================== BUILD ERROR LOG ===================="
-              grep -i -E "error:|fatal:" xcodebuild.log || tail -n 80 xcodebuild.log
+              echo "Build failed"
               exit 1
             }
 
@@ -55,9 +61,13 @@ jobs:
           path: output/MZVCPhonebook.ipa
           if-no-files-found: error
 
-      - name: Upload Full Build Log
+      - name: Publish Build Log to Logs Branch
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: xcodebuild-log
-          path: xcodebuild.log
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B logs
+          cp xcodebuild.log build-error.txt || echo "No log generated" > build-error.txt
+          git add build-error.txt
+          git commit -m "Auto-published xcodebuild log"
+          git push -f origin logs
