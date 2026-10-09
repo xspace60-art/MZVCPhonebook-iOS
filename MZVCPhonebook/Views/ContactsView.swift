@@ -16,6 +16,9 @@ public struct ContactsView: View {
                             announcementBanner(broadcast)
                         }
 
+                        // Directory vs Saved Scope Switcher
+                        directoryScopeSelector
+
                         // Search Bar
                         searchBar
 
@@ -51,7 +54,7 @@ public struct ContactsView: View {
                         .padding(.bottom, 16)
                 }
             }
-            .navigationTitle("\(store.selectedDistrict) VC Phonebook")
+            .navigationTitle(store.showOnlyFavorites ? "Saved Favorites" : "\(store.selectedDistrict) VC Phonebook")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -76,6 +79,29 @@ public struct ContactsView: View {
 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 12) {
+                        // Favorites Quick Toggle
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                                store.showOnlyFavorites.toggle()
+                            }
+                        } label: {
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: store.showOnlyFavorites ? "star.fill" : "star")
+                                    .font(.system(size: 17))
+                                    .foregroundColor(store.showOnlyFavorites ? .yellow : .primary)
+
+                                if !store.favoriteContacts.isEmpty {
+                                    Text("\(store.favoriteContacts.count)")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .frame(width: 14, height: 14)
+                                        .background(Color.yellow.opacity(0.95))
+                                        .clipShape(Circle())
+                                        .offset(x: 6, y: -6)
+                                }
+                            }
+                        }
+
                         // Notification Bell
                         Button {
                             store.isNotificationHistoryPresented = true
@@ -184,6 +210,55 @@ public struct ContactsView: View {
         .padding(.horizontal, 16)
     }
 
+    // MARK: - Scope Selector (All Directory vs Saved)
+    private var directoryScopeSelector: some View {
+        HStack(spacing: 8) {
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    store.showOnlyFavorites = false
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 12))
+                    Text("All Directory")
+                        .font(.system(size: 13, weight: !store.showOnlyFavorites ? .bold : .medium))
+                    Text("(\(store.contacts.count))")
+                        .font(.system(size: 11, weight: .semibold))
+                        .opacity(0.8)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(!store.showOnlyFavorites ? Color.accentColor : Color(.secondarySystemGroupedBackground))
+                .foregroundColor(!store.showOnlyFavorites ? .white : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    store.showOnlyFavorites = true
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: store.showOnlyFavorites ? "star.fill" : "star")
+                        .font(.system(size: 12))
+                        .foregroundColor(store.showOnlyFavorites ? .yellow : .orange)
+                    Text("Saved")
+                        .font(.system(size: 13, weight: store.showOnlyFavorites ? .bold : .medium))
+                    Text("(\(store.favoriteContacts.count))")
+                        .font(.system(size: 11, weight: .semibold))
+                        .opacity(0.8)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(store.showOnlyFavorites ? Color.accentColor : Color(.secondarySystemGroupedBackground))
+                .foregroundColor(store.showOnlyFavorites ? .white : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
     // MARK: - Search Bar
     private var searchBar: some View {
         HStack(spacing: 8) {
@@ -282,32 +357,61 @@ public struct ContactsView: View {
     // MARK: - Empty State
     private var emptyStateView: some View {
         VStack(spacing: 12) {
-            Image(systemName: "person.crop.circle.badge.questionmark")
-                .font(.system(size: 44))
-                .foregroundColor(.secondary)
-                .padding(.top, 32)
-            Text("No Contacts Found")
-                .font(.headline)
-            Text("Try searching for a different name, village or designation.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+            if store.showOnlyFavorites && store.favoriteContacts.isEmpty {
+                Image(systemName: "star.slash")
+                    .font(.system(size: 46))
+                    .foregroundColor(.yellow)
+                    .padding(.top, 32)
+                Text("No Saved Contacts Yet")
+                    .font(.headline)
+                Text("Tap the star icon ⭐ on any Village Council member to save them here for instant 1-tap offline access.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
 
-            Button {
-                store.contactSearchText = ""
-                store.selectedCategory = "All"
-                store.selectedRole = "All"
-            } label: {
-                Text("Reset All Filters")
-                    .font(.system(size: 14, weight: .semibold))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.accentColor.opacity(0.12))
-                    .foregroundColor(.accentColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                        store.showOnlyFavorites = false
+                    }
+                } label: {
+                    Text("Browse Directory")
+                        .font(.system(size: 14, weight: .semibold))
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 9)
+                        .background(Color.accentColor)
+                        .foregroundColor(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .padding(.top, 4)
+            } else {
+                Image(systemName: "person.crop.circle.badge.questionmark")
+                    .font(.system(size: 44))
+                    .foregroundColor(.secondary)
+                    .padding(.top, 32)
+                Text("No Contacts Found")
+                    .font(.headline)
+                Text(store.showOnlyFavorites ? "No saved contacts match your search." : "Try searching for a different name, village or designation.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                Button {
+                    store.contactSearchText = ""
+                    store.selectedCategory = "All"
+                    store.selectedRole = "All"
+                } label: {
+                    Text("Reset Search")
+                        .font(.system(size: 14, weight: .semibold))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.accentColor.opacity(0.12))
+                        .foregroundColor(.accentColor)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .padding(.top, 4)
             }
-            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)

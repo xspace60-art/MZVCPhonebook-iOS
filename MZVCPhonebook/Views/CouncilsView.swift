@@ -70,6 +70,7 @@ public struct CouncilsView: View {
                             Button {
                                 // Filter contacts by this village and switch to Directory tab
                                 store.contactSearchText = village.name
+                                store.showOnlyFavorites = false
                                 selectedTab = 0
                             } label: {
                                 VStack(alignment: .leading, spacing: 8) {

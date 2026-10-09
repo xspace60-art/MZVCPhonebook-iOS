@@ -71,6 +71,32 @@ public struct AboutView: View {
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
 
+                    // Feature: Saved Favorites
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "star.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(.yellow)
+                            .padding(.top, 2)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Saved Favorites")
+                                    .font(.system(size: 14, weight: .bold))
+                                Spacer()
+                                Text("\(store.favoriteContacts.count) saved")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                            }
+                            Text("Bookmark important Village Council leaders for immediate 1-tap calling across all districts without searching.")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+
                     // Feature: Live Sync
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: "bolt.fill")

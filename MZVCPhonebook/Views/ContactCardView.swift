@@ -41,6 +41,18 @@ public struct ContactCardView: View {
                 }
 
                 Spacer()
+
+                // Favorite Button
+                Button {
+                    store.toggleFavorite(contact)
+                } label: {
+                    Image(systemName: store.isFavorite(contact) ? "star.fill" : "star")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(store.isFavorite(contact) ? Color.yellow : Color(.systemGray3))
+                        .padding(4)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
 
             // Village & Category Row
@@ -59,6 +71,17 @@ public struct ContactCardView: View {
                     Text(cat)
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
+                }
+
+                if store.showOnlyFavorites, let dist = contact.district, !dist.isEmpty {
+                    Spacer()
+                    Text(dist)
+                        .font(.system(size: 11, weight: .semibold))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.12))
+                        .foregroundColor(.accentColor)
+                        .clipShape(Capsule())
                 }
             }
 

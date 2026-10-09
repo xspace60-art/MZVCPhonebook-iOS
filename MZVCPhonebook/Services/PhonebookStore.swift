@@ -19,6 +19,11 @@ public final class PhonebookStore: ObservableObject {
     @Published public var broadcasts: [BroadcastNotice] = []
     @Published public var appInfo: AppInfo = AppInfo()
 
+    // Favorites State
+    @Published public var favoriteContacts: [Contact] = []
+    @Published public var favoriteContactIds: Set<String> = []
+    @Published public var showOnlyFavorites: Bool = false
+
     @Published public var isLoading: Bool = false
     @Published public var isOffline: Bool = false
     @Published public var syncStatusMessage: String = "Connecting..."
@@ -85,6 +90,11 @@ public final class PhonebookStore: ObservableObject {
         if let cachedAppInfo = cache.load(forKey: "app_info", as: AppInfo.self) {
             self.appInfo = cachedAppInfo
         }
+
+        if let cachedFavorites = cache.load(forKey: "favorite_contacts", as: [Contact].self) {
+            self.favoriteContacts = cachedFavorites
+            self.favoriteContactIds = Set(cachedFavorites.map { $0.id })
+        }
     }
 
     // MARK: - Fresh Fetch from Server
@@ -123,6 +133,18 @@ public final class PhonebookStore: ObservableObject {
             cache.save(self.emergency, forKey: "emergency_\(selectedDistrict)")
             cache.save(self.broadcasts, forKey: "broadcasts_\(selectedDistrict)")
             cache.save(self.appInfo, forKey: "app_info")
+
+            // Update favorited contacts with any fresh details from server
+            var updatedFavorites = false
+            for fresh in freshContacts {
+                if let idx = self.favoriteContacts.firstIndex(where: { $0.id == fresh.id }) {
+                    self.favoriteContacts[idx] = fresh
+                    updatedFavorites = true
+                }
+            }
+            if updatedFavorites {
+                cache.save(self.favoriteContacts, forKey: "favorite_contacts")
+            }
         } catch {
             print("API Sync error: \(error)")
             self.isOffline = true
@@ -144,6 +166,7 @@ public final class PhonebookStore: ObservableObject {
         selectedRole = "All"
         contactSearchText = ""
         officeSearchText = ""
+        showOnlyFavorites = false
         dismissBroadcastId = nil
 
         loadCachedData()
@@ -156,15 +179,17 @@ public final class PhonebookStore: ObservableObject {
 
     // MARK: - Filtered Contacts
     public var uniqueCategories: [String] {
-        var cats = Array(Set(contacts.compactMap { $0.category })).sorted()
+        let sourceList = showOnlyFavorites ? favoriteContacts : contacts
+        var cats = Array(Set(sourceList.compactMap { $0.category })).sorted()
         cats.insert("All", at: 0)
         return cats
     }
 
     public var filteredContacts: [Contact] {
+        let sourceList = showOnlyFavorites ? favoriteContacts : contacts
         let query = contactSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-        return contacts.filter { contact in
+        return sourceList.filter { contact in
             // Category filter
             if selectedCategory != "All" && (contact.category ?? "") != selectedCategory {
                 return false
@@ -187,13 +212,35 @@ public final class PhonebookStore: ObservableObject {
                 let matchesVillage = contact.villageName.lowercased().contains(query)
                 let matchesDesignation = contact.designation.lowercased().contains(query)
                 let matchesPhone = contact.phone.contains(query)
-                if !matchesName && !matchesVillage && !matchesDesignation && !matchesPhone {
+                let matchesDistrict = (contact.district ?? "").lowercased().contains(query)
+                if !matchesName && !matchesVillage && !matchesDesignation && !matchesPhone && !matchesDistrict {
                     return false
                 }
             }
 
             return true
         }
+    }
+
+    // MARK: - Favorites Management
+    public func isFavorite(_ contact: Contact) -> Bool {
+        favoriteContactIds.contains(contact.id)
+    }
+
+    public func toggleFavorite(_ contact: Contact) {
+        if isFavorite(contact) {
+            favoriteContactIds.remove(contact.id)
+            favoriteContacts.removeAll { $0.id == contact.id }
+            showToast("Removed from Saved Contacts")
+        } else {
+            favoriteContactIds.insert(contact.id)
+            if !favoriteContacts.contains(where: { $0.id == contact.id }) {
+                favoriteContacts.append(contact)
+            }
+            showToast("⭐ Saved to Favorites")
+        }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        cache.save(favoriteContacts, forKey: "favorite_contacts")
     }
 
     // MARK: - Filtered Offices

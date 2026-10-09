@@ -14,6 +14,7 @@ Built with **SwiftUI** (iOS 16.0+), supporting 100% offline caching, real-time s
   - Filter by Designation (VCP / President, VCVP, Secretary, Treasurer, Member, Worker)
   - Real-time search by name, village, designation, and phone number.
 - **1-Tap Direct Actions**:
+  - ⭐ **Favorites & Bookmarks**: 1-tap star bookmarking with persistent offline storage, dedicated quick-access scope selector, and cross-district saved favorites.
   - 📞 **Direct Call**: Instantly dials the phone number via iOS Phone app (`tel://`).
   - 💬 **WhatsApp**: Opens WhatsApp chat directly with a polite prefilled Mizo greeting (`whatsapp://`).
   - 📋 **Copy**: Copies number to clipboard with haptic feedback.
