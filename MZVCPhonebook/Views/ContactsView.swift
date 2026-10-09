@@ -54,7 +54,7 @@ public struct ContactsView: View {
             .navigationTitle("\(store.selectedDistrict) VC Phonebook")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button {
                         store.isDistrictPickerPresented = true
                     } label: {
@@ -74,7 +74,7 @@ public struct ContactsView: View {
                     }
                 }
 
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 12) {
                         // Notification Bell
                         Button {
