@@ -3,11 +3,17 @@ import WebKit
 
 // MARK: - Phonebook Web Container View
 /// Main entry container that displays http://129.225.98.64/phonebook/
-/// Handles full-screen rendering, pull-to-refresh, call interception, and offline failover.
+/// Features:
+/// 1. Direct Call: Instantly dials phone numbers via iOS Phone app (tel://) with haptic feedback.
+/// 2. WhatsApp: Opens WhatsApp chat directly with polite prefilled Mizo greeting (whatsapp://).
+/// 3. Copy: Copies number to clipboard with native haptic feedback and toast banner.
+/// 4. Report Incorrect Info: Submit wrong numbers, expired terms, or spelling mistakes directly to District Administrator.
+/// 5. Responsive Optimization: Adaptive scaling across iPhone SE (compact), Pro Max, and iPad screens.
 public struct PhonebookWebContainerView: View {
     @StateObject private var webState = WebViewState()
+    @StateObject private var store = PhonebookStore()
     @State private var showOfflineDirectory: Bool = false
-    @State private var showFloatingControls: Bool = true
+    @State private var showReportCorrection: Bool = false
     @State private var showShareSheet: Bool = false
     
     private let phonebookURL = URL(string: "http://129.225.98.64/phonebook/")!
@@ -15,162 +21,227 @@ public struct PhonebookWebContainerView: View {
     public init() {}
 
     public var body: some View {
-        ZStack(alignment: .bottom) {
-            // Main WebView
-            PhonebookWebViewRepresentable(state: webState, targetURL: phonebookURL)
-                .ignoresSafeArea(.container, edges: .all)
+        GeometryReader { geo in
+            let isCompact = geo.size.width < 380 // iPhone SE & small screens
+            let isPad = geo.size.width >= 768    // iPad & landscape screens
 
-            // Top Progress Bar
-            VStack(spacing: 0) {
-                if webState.isLoading && webState.progress < 1.0 {
-                    GeometryReader { geo in
-                        Rectangle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color(red: 0.07, green: 0.36, blue: 0.50), Color(red: 0.06, green: 0.72, blue: 0.51)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
+            ZStack(alignment: .bottom) {
+                // Background matching web app header for seamless status bar blend
+                Color(red: 0.07, green: 0.36, blue: 0.50)
+                    .ignoresSafeArea()
+
+                // Main Web View
+                PhonebookWebViewRepresentable(state: webState, targetURL: phonebookURL)
+                    .ignoresSafeArea(.container, edges: .all)
+
+                // Top Progress Bar
+                VStack(spacing: 0) {
+                    if webState.isLoading && webState.progress < 1.0 {
+                        GeometryReader { progressGeo in
+                            Rectangle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color(red: 0.07, green: 0.36, blue: 0.50), Color(red: 0.06, green: 0.72, blue: 0.51)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
                                 )
-                            )
-                            .frame(width: geo.size.width * CGFloat(webState.progress), height: 3.5)
-                            .animation(.easeOut(duration: 0.2), value: webState.progress)
+                                .frame(width: progressGeo.size.width * CGFloat(webState.progress), height: 3.5)
+                                .animation(.easeOut(duration: 0.2), value: webState.progress)
+                        }
+                        .frame(height: 3.5)
                     }
-                    .frame(height: 3.5)
+                    Spacer()
                 }
-                Spacer()
-            }
-            .ignoresSafeArea(.container, edges: .top)
+                .ignoresSafeArea(.container, edges: .top)
 
-            // Offline / Connection Error Overlay
-            if webState.hasError {
-                VStack(spacing: 18) {
-                    Image(systemName: "wifi.slash")
-                        .font(.system(size: 48, weight: .semibold))
-                        .foregroundColor(Color(red: 0.07, green: 0.36, blue: 0.50))
-
-                    VStack(spacing: 6) {
-                        Text("Connection Offline")
-                            .font(.system(size: 20, weight: .bold))
-
-                        Text("Unable to reach the live phonebook at\nhttp://129.225.98.64/phonebook/\nPlease check your network connection.")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 24)
+                // Native Toast HUD for Copy & Direct Actions
+                VStack {
+                    if let toast = webState.toastMessage {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 15))
+                            Text(toast)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.black.opacity(0.88))
+                        .clipShape(Capsule())
+                        .shadow(color: .black.opacity(0.25), radius: 10, x: 0, y: 4)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .padding(.top, isPad ? 30 : 54)
                     }
+                    Spacer()
+                }
+                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: webState.toastMessage)
+                .ignoresSafeArea(.container, edges: .top)
 
-                    HStack(spacing: 12) {
+                // Offline / Connection Error Overlay
+                if webState.hasError {
+                    VStack(spacing: 18) {
+                        Image(systemName: "wifi.slash")
+                            .font(.system(size: 46, weight: .semibold))
+                            .foregroundColor(Color(red: 0.07, green: 0.36, blue: 0.50))
+
+                        VStack(spacing: 6) {
+                            Text("Connection Offline")
+                                .font(.system(size: 19, weight: .bold))
+
+                            Text("Unable to reach the live phonebook at\nhttp://129.225.98.64/phonebook/\nPlease check your network connection.")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 20)
+                        }
+
+                        HStack(spacing: 12) {
+                            Button(action: {
+                                webState.reload()
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "arrow.clockwise")
+                                    Text("Retry")
+                                }
+                                .font(.system(size: 14, weight: .bold))
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 18)
+                                .background(Color(red: 0.07, green: 0.36, blue: 0.50))
+                                .foregroundColor(.white)
+                                .clipShape(Capsule())
+                            }
+
+                            Button(action: {
+                                showOfflineDirectory = true
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "folder.badge.person.crop")
+                                    Text("Offline Directory")
+                                }
+                                .font(.system(size: 14, weight: .bold))
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 18)
+                                .background(Color(.secondarySystemFill))
+                                .foregroundColor(.primary)
+                                .clipShape(Capsule())
+                            }
+                        }
+                    }
+                    .padding(22)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: .black.opacity(0.18), radius: 20, x: 0, y: 8)
+                    )
+                    .padding(24)
+                    .transition(.opacity.combined(with: .scale))
+                }
+
+                // Adaptive Floating Action Capsule
+                if !webState.hasError {
+                    HStack(spacing: isCompact ? 10 : 16) {
+                        // Back Navigation
+                        Button(action: {
+                            webState.goBack()
+                        }) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: isCompact ? 14 : 15, weight: .bold))
+                                .foregroundColor(webState.canGoBack ? .primary : .secondary.opacity(0.35))
+                        }
+                        .disabled(!webState.canGoBack)
+
+                        // Forward Navigation
+                        Button(action: {
+                            webState.goForward()
+                        }) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: isCompact ? 14 : 15, weight: .bold))
+                                .foregroundColor(webState.canGoForward ? .primary : .secondary.opacity(0.35))
+                        }
+                        .disabled(!webState.canGoForward)
+
+                        Divider()
+                            .frame(height: 16)
+
+                        // Reload Button
                         Button(action: {
                             webState.reload()
                         }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "arrow.clockwise")
-                                Text("Retry")
-                            }
-                            .font(.system(size: 14, weight: .bold))
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 18)
-                            .background(Color(red: 0.07, green: 0.36, blue: 0.50))
-                            .foregroundColor(.white)
-                            .clipShape(Capsule())
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: isCompact ? 14 : 15, weight: .semibold))
+                                .foregroundColor(.primary)
                         }
 
+                        // Share Portal Link
+                        Button(action: {
+                            showShareSheet = true
+                        }) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: isCompact ? 14 : 15, weight: .semibold))
+                                .foregroundColor(.primary)
+                        }
+
+                        Divider()
+                            .frame(height: 16)
+
+                        // Report Incorrect Info (Direct to District Admin)
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            showReportCorrection = true
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: isCompact ? 11 : 12))
+                                    .foregroundColor(.orange)
+                                if !isCompact {
+                                    Text("Report")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                        }
+
+                        Divider()
+                            .frame(height: 16)
+
+                        // Saved Favorites & Offline Directory
                         Button(action: {
                             showOfflineDirectory = true
                         }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "folder.badge.person.crop")
-                                Text("Offline Directory")
+                            HStack(spacing: 4) {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: isCompact ? 11 : 12))
+                                    .foregroundColor(Color(red: 0.07, green: 0.36, blue: 0.50))
+                                if !isCompact {
+                                    Text("Saved")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(Color(red: 0.07, green: 0.36, blue: 0.50))
+                                }
                             }
-                            .font(.system(size: 14, weight: .bold))
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 18)
-                            .background(Color(.secondarySystemFill))
-                            .foregroundColor(.primary)
-                            .clipShape(Capsule())
                         }
                     }
+                    .padding(.horizontal, isCompact ? 12 : 18)
+                    .padding(.vertical, isCompact ? 8 : 10)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.12), radius: 10, x: 0, y: 4)
+                    .frame(maxWidth: isPad ? 440 : .infinity)
+                    .padding(.bottom, isCompact ? 8 : 14)
                 }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: .black.opacity(0.18), radius: 20, x: 0, y: 8)
-                )
-                .padding(24)
-                .transition(.opacity.combined(with: .scale))
-            }
-
-            // Compact Floating Navigation Pill
-            if showFloatingControls && !webState.hasError {
-                HStack(spacing: 18) {
-                    // Back button
-                    Button(action: {
-                        webState.goBack()
-                    }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(webState.canGoBack ? .primary : .secondary.opacity(0.4))
-                    }
-                    .disabled(!webState.canGoBack)
-
-                    // Forward button
-                    Button(action: {
-                        webState.goForward()
-                    }) {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(webState.canGoForward ? .primary : .secondary.opacity(0.4))
-                    }
-                    .disabled(!webState.canGoForward)
-
-                    Divider()
-                        .frame(height: 18)
-
-                    // Reload
-                    Button(action: {
-                        webState.reload()
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.primary)
-                    }
-
-                    // Share
-                    Button(action: {
-                        showShareSheet = true
-                    }) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.primary)
-                    }
-
-                    Divider()
-                        .frame(height: 18)
-
-                    // Offline Directory Mode Switcher
-                    Button(action: {
-                        showOfflineDirectory = true
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "bookmark.fill")
-                                .font(.system(size: 12))
-                            Text("Saved")
-                                .font(.system(size: 12, weight: .bold))
-                        }
-                        .foregroundColor(Color(red: 0.07, green: 0.36, blue: 0.50))
-                    }
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
-                .background(.ultraThinMaterial)
-                .clipShape(Capsule())
-                .shadow(color: .black.opacity(0.12), radius: 10, x: 0, y: 4)
-                .padding(.bottom, 12)
             }
         }
+        .environmentObject(store)
         .sheet(isPresented: $showOfflineDirectory) {
             MainTabView()
+                .environmentObject(store)
+        }
+        .sheet(isPresented: $showReportCorrection) {
+            ReportCorrectionSheet()
+                .environmentObject(store)
         }
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(activityItems: [phonebookURL])
@@ -186,11 +257,13 @@ public final class WebViewState: ObservableObject {
     @Published public var canGoForward: Bool = false
     @Published public var hasError: Bool = false
     @Published public var errorMessage: String? = nil
+    @Published public var toastMessage: String? = nil
 
     fileprivate var webViewReference: WKWebView? = nil
 
     public func reload() {
         hasError = false
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         webViewReference?.reload()
     }
 
@@ -203,6 +276,18 @@ public final class WebViewState: ObservableObject {
     public func goForward() {
         if webViewReference?.canGoForward == true {
             webViewReference?.goForward()
+        }
+    }
+
+    public func showToast(_ msg: String) {
+        toastMessage = msg
+        Task {
+            try? await Task.sleep(nanoseconds: 2_600_000_000)
+            await MainActor.run {
+                if self.toastMessage == msg {
+                    self.toastMessage = nil
+                }
+            }
         }
     }
 }
@@ -221,11 +306,55 @@ public struct PhonebookWebViewRepresentable: UIViewRepresentable {
         configuration.allowsInlineMediaPlayback = true
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
 
+        // User script: Injects native hooks into copy actions
+        let scriptSource = """
+        (function() {
+            // Hook into copyContact function
+            const origCopy = window.copyContact;
+            window.copyContact = function(name, phone) {
+                try {
+                    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeActions) {
+                        window.webkit.messageHandlers.nativeActions.postMessage({
+                            action: 'copy',
+                            name: name || 'Contact',
+                            phone: phone || ''
+                        });
+                    }
+                } catch(e) {}
+                if (typeof origCopy === 'function') {
+                    origCopy(name, phone);
+                }
+            };
+
+            // Hook into navigator.clipboard.writeText
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                const origWrite = navigator.clipboard.writeText.bind(navigator.clipboard);
+                navigator.clipboard.writeText = function(text) {
+                    try {
+                        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeActions) {
+                            window.webkit.messageHandlers.nativeActions.postMessage({
+                                action: 'copy',
+                                name: 'Number',
+                                phone: text
+                            });
+                        }
+                    } catch(e) {}
+                    return origWrite(text);
+                };
+            }
+        })();
+        """
+
+        let userScript = WKUserScript(source: scriptSource, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        configuration.userContentController.addUserScript(userScript)
+        configuration.userContentController.add(context.coordinator, name: "nativeActions")
+
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.decelerationRate = .normal // 120Hz smooth scrolling
         webView.backgroundColor = UIColor(red: 0.07, green: 0.36, blue: 0.50, alpha: 1.0)
         webView.scrollView.backgroundColor = UIColor(red: 0.07, green: 0.36, blue: 0.50, alpha: 1.0)
 
@@ -241,7 +370,7 @@ public struct PhonebookWebViewRepresentable: UIViewRepresentable {
         // Store reference in state
         state.webViewReference = webView
 
-        // Add estimatedProgress and navigation state observers
+        // Setup estimatedProgress and navigation state observers
         context.coordinator.setupObservers(for: webView)
 
         // Load the phonebook URL
@@ -253,7 +382,7 @@ public struct PhonebookWebViewRepresentable: UIViewRepresentable {
 
     public func updateUIView(_ uiView: WKWebView, context: Context) {}
 
-    public class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+    public class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         let parent: PhonebookWebViewRepresentable
         private var progressObservation: NSKeyValueObservation?
         private var backObservation: NSKeyValueObservation?
@@ -288,7 +417,24 @@ public struct PhonebookWebViewRepresentable: UIViewRepresentable {
             parent.state.reload()
         }
 
-        // Intercept links: tel:, whatsapp:, mailto:, sms:
+        // Script Message Handler for Native Copy with Haptic Feedback
+        public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard message.name == "nativeActions",
+                  let dict = message.body as? [String: Any],
+                  let action = dict["action"] as? String else { return }
+
+            if action == "copy" {
+                let phone = dict["phone"] as? String ?? ""
+                let name = dict["name"] as? String ?? "Number"
+                if !phone.isEmpty {
+                    UIPasteboard.general.string = phone
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    parent.state.showToast("📋 Copied: \(name) (\(phone))")
+                }
+            }
+        }
+
+        // Intercept URLs: Direct Call (tel://), WhatsApp (whatsapp://), mailto, sms
         public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard let url = navigationAction.request.url else {
                 decisionHandler(.allow)
@@ -297,27 +443,59 @@ public struct PhonebookWebViewRepresentable: UIViewRepresentable {
 
             let scheme = url.scheme?.lowercased() ?? ""
 
-            // Telephone calling interception
+            // 1. Direct Call: Instantly dial via iOS Phone app (tel://)
             if scheme == "tel" || scheme == "telprompt" {
-                if UIApplication.shared.canOpenURL(url) {
-                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                let raw = url.resourceSpecifier ?? url.absoluteString.replacingOccurrences(of: "tel:", with: "").replacingOccurrences(of: "tel://", with: "")
+                let cleanDigits = raw.filter { $0.isNumber || $0 == "+" }
+                if let telURL = URL(string: "tel://\(cleanDigits)"), UIApplication.shared.canOpenURL(telURL) {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    UIApplication.shared.open(telURL, options: [:], completionHandler: nil)
                 }
                 decisionHandler(.cancel)
                 return
             }
 
-            // WhatsApp link interception
+            // 2. WhatsApp: Opens WhatsApp chat with polite prefilled Mizo greeting (whatsapp://)
             if scheme == "whatsapp" || url.host?.contains("whatsapp.com") == true || url.host?.contains("wa.me") == true {
-                if UIApplication.shared.canOpenURL(url) {
+                var waPhone = ""
+                var waMessage = ""
+
+                if url.host?.contains("wa.me") == true {
+                    waPhone = url.path.replacingOccurrences(of: "/", with: "").filter { $0.isNumber }
+                    if let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+                        waMessage = components.queryItems?.first(where: { $0.name == "text" })?.value ?? ""
+                    }
+                } else if url.host?.contains("whatsapp.com") == true {
+                    if let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+                        waPhone = (components.queryItems?.first(where: { $0.name == "phone" })?.value ?? "").filter { $0.isNumber }
+                        waMessage = components.queryItems?.first(where: { $0.name == "text" })?.value ?? ""
+                    }
+                }
+
+                // If phone is 10 digits without country code, prepend 91 for India
+                if waPhone.count == 10 {
+                    waPhone = "91\(waPhone)"
+                }
+
+                // Ensure polite Mizo greeting is attached
+                if waMessage.isEmpty {
+                    waMessage = "Chibai, khawngaih in ka be thei che angem."
+                }
+
+                let encodedText = waMessage.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                if let nativeWaURL = URL(string: "whatsapp://send?phone=\(waPhone)&text=\(encodedText)"),
+                   UIApplication.shared.canOpenURL(nativeWaURL) {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    UIApplication.shared.open(nativeWaURL, options: [:], completionHandler: nil)
+                } else {
+                    // Fallback to web link if WhatsApp application is not installed
                     UIApplication.shared.open(url, options: [:], completionHandler: nil)
-                } else if let webURL = URL(string: url.absoluteString.replacingOccurrences(of: "whatsapp://send", with: "https://api.whatsapp.com/send")) {
-                    UIApplication.shared.open(webURL, options: [:], completionHandler: nil)
                 }
                 decisionHandler(.cancel)
                 return
             }
 
-            // Mail and SMS
+            // 3. Mail and SMS
             if scheme == "mailto" || scheme == "sms" {
                 if UIApplication.shared.canOpenURL(url) {
                     UIApplication.shared.open(url, options: [:], completionHandler: nil)
@@ -326,7 +504,7 @@ public struct PhonebookWebViewRepresentable: UIViewRepresentable {
                 return
             }
 
-            // Handle APK download or external attachments
+            // 4. Handle APK download or external attachments
             if url.pathExtension.lowercased() == "apk" {
                 UIApplication.shared.open(url, options: [:], completionHandler: nil)
                 decisionHandler(.cancel)

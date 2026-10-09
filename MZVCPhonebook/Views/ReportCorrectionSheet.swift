@@ -9,6 +9,8 @@ public struct ReportCorrectionSheet: View {
     @State private var details: String = ""
     @State private var reporterName: String = ""
     @State private var reporterPhone: String = ""
+    @State private var customContactName: String = ""
+    @State private var customVillageName: String = ""
 
     @State private var isSubmitting: Bool = false
     @State private var submissionError: String? = nil
@@ -57,7 +59,17 @@ public struct ReportCorrectionSheet: View {
                                 .foregroundColor(.secondary)
                             Text("Current Phone: \(em.phone)")
                                 .font(.caption)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("General Directory Correction")
+                                .font(.headline)
+                            Text("Specify the Village Council or official you are reporting:")
+                                .font(.caption)
                                 .foregroundColor(.secondary)
+                            
+                            TextField("Official / Leader Name (e.g. Pu Lalthana)", text: $customContactName)
+                            TextField("Village / Department (e.g. Vairengte)", text: $customVillageName)
                         }
                     }
                 }
@@ -177,9 +189,23 @@ public struct ReportCorrectionSheet: View {
                 district: store.selectedDistrict
             )
         } else {
-            isSubmitting = false
-            dismiss()
-            return
+            let target = customContactName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let village = customVillageName.trimmingCharacters(in: .whitespacesAndNewlines)
+            payload = ReportPayload(
+                contactId: "gen_\(UUID().uuidString.prefix(6))",
+                contactName: target.isEmpty ? "General Report" : target,
+                serviceName: target.isEmpty ? "General Report" : target,
+                villageName: village.isEmpty ? store.selectedDistrict : village,
+                designation: "Citizen Submission",
+                isEmergency: false,
+                isOffice: false,
+                issueType: issueType,
+                suggestedPhone: suggestedPhone.trimmingCharacters(in: .whitespacesAndNewlines),
+                description: details.trimmingCharacters(in: .whitespacesAndNewlines),
+                reportedBy: reporterName.isEmpty ? "Citizen" : reporterName,
+                reporterPhone: reporterPhone,
+                district: store.selectedDistrict
+            )
         }
 
         Task {
