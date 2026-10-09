@@ -139,8 +139,6 @@ public struct AboutView: View {
                             }
                         }
 
-                        }
-
                         // State & Governance
                         HStack {
                             Text("Jurisdiction:")
