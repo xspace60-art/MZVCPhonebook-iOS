@@ -142,7 +142,7 @@ public struct ContactsView: View {
         HStack {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(store.isOffline ? Color.orange : Color.green)
+                    .fill(store.isLiveConnected ? Color.green : (store.isOffline ? Color.orange : Color.blue))
                     .frame(width: 8, height: 8)
                 Text(store.syncStatusMessage)
                     .font(.system(size: 12, weight: .medium))
@@ -151,9 +151,23 @@ public struct ContactsView: View {
 
             Spacer()
 
-            Text("Village Council Directory")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary)
+            if store.isLiveConnected {
+                HStack(spacing: 4) {
+                    Image(systemName: "bolt.horizontal.fill")
+                        .font(.system(size: 9))
+                    Text("LIVE PUSH")
+                        .font(.system(size: 10, weight: .bold))
+                }
+                .foregroundColor(.green)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.green.opacity(0.12))
+                .clipShape(Capsule())
+            } else {
+                Text("Village Council Directory")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 4)

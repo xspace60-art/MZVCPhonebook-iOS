@@ -4,7 +4,7 @@ public final class APIService {
     public static let shared = APIService()
 
     /// Internal secure endpoint provider (obfuscated from plaintext)
-    private var baseURL: String {
+    public var baseURL: String {
         // Base64 decoded at runtime to prevent exposing raw http address
         let encoded = "aHR0cDovLzEyOS4yMjUuOTguNjQ="
         if let data = Data(base64Encoded: encoded), let decoded = String(data: data, encoding: .utf8) {

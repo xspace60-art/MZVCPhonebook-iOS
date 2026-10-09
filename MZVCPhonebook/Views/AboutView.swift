@@ -97,17 +97,23 @@ public struct AboutView: View {
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
 
-                    // Feature: Live Sync
+                    // Feature: Live Sync & Real-Time Push
                     HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: "bolt.fill")
+                        Image(systemName: store.isLiveConnected ? "bolt.badge.clock.fill" : "bolt.fill")
                             .font(.system(size: 22))
-                            .foregroundColor(.blue)
+                            .foregroundColor(store.isLiveConnected ? .green : .blue)
                             .padding(.top, 2)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Live Cloud Synchronization")
-                                .font(.system(size: 14, weight: .bold))
-                            Text("Updates and new appointments submitted by District Administrators sync seamlessly when connected.")
+                            HStack {
+                                Text("Real-Time Push Engine")
+                                    .font(.system(size: 14, weight: .bold))
+                                Spacer()
+                                Text(store.isLiveConnected ? "🟢 Active Push" : "Connecting")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(store.isLiveConnected ? .green : .secondary)
+                            }
+                            Text("Connected to Oracle Cloud SSE push engine. Administrative updates, new appointments, and district notices stream directly to your device without manual refresh.")
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
                         }

@@ -29,6 +29,7 @@
 		1001A0202B98000100000020 /* NotificationHistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1001F0202B98000100000020 /* NotificationHistorySheet.swift */; };
 		1001A0212B98000100000021 /* ReportCorrectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1001F0212B98000100000021 /* ReportCorrectionSheet.swift */; };
 		1001A0222B98000100000022 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1001F0222B98000100000022 /* Assets.xcassets */; };
+		1001A0232B98000100000023 /* RealtimeSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1001F0242B98000100000024 /* RealtimeSyncService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +57,7 @@
 		1001F0212B98000100000021 /* ReportCorrectionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportCorrectionSheet.swift; sourceTree = "<group>"; };
 		1001F0222B98000100000022 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1001F0232B98000100000023 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1001F0242B98000100000024 /* RealtimeSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeSyncService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,6 +120,7 @@
 				1001F0092B98000100000009 /* APIService.swift */,
 				1001F0102B98000100000010 /* CacheManager.swift */,
 				1001F0112B98000100000011 /* PhonebookStore.swift */,
+				1001F0242B98000100000024 /* RealtimeSyncService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -245,6 +248,7 @@
 				1001A0192B98000100000019 /* DistrictPickerSheet.swift in Sources */,
 				1001A0202B98000100000020 /* NotificationHistorySheet.swift in Sources */,
 				1001A0212B98000100000021 /* ReportCorrectionSheet.swift in Sources */,
+				1001A0232B98000100000023 /* RealtimeSyncService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

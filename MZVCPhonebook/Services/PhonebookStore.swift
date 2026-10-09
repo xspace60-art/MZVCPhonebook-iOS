@@ -26,6 +26,7 @@ public final class PhonebookStore: ObservableObject {
 
     @Published public var isLoading: Bool = false
     @Published public var isOffline: Bool = false
+    @Published public var isLiveConnected: Bool = false
     @Published public var syncStatusMessage: String = "Connecting..."
 
     // Filter states
@@ -50,6 +51,7 @@ public final class PhonebookStore: ObservableObject {
 
     private let api = APIService.shared
     private let cache = CacheManager.shared
+    private var cancellables = Set<AnyCancellable>()
 
     public init() {
         let savedDistrict = UserDefaults.standard.string(forKey: "selected_district") ?? "Kolasib"
@@ -58,6 +60,7 @@ public final class PhonebookStore: ObservableObject {
         Task {
             await fetchFreshData()
         }
+        setupRealtimeSync()
     }
 
     // MARK: - Offline Caching Hydration
@@ -327,6 +330,110 @@ public final class PhonebookStore: ObservableObject {
             try? await Task.sleep(nanoseconds: 2_500_000_000)
             if toastMessage == msg {
                 toastMessage = nil
+            }
+        }
+    }
+
+    // MARK: - Real-Time Server Push Engine
+    private func setupRealtimeSync() {
+        RealtimeSyncService.shared.eventSubject
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                self?.handleRealtimeEvent(event)
+            }
+            .store(in: &cancellables)
+
+        RealtimeSyncService.shared.start()
+    }
+
+    private func handleRealtimeEvent(_ event: RealtimeEvent) {
+        switch event {
+        case .connected:
+            self.isLiveConnected = true
+            self.isOffline = false
+            self.syncStatusMessage = "⚡ Live Synced (\(selectedDistrict))"
+
+        case .ping:
+            self.isLiveConnected = true
+
+        case .contactAdded(let contact):
+            if contact.district == nil || contact.district == selectedDistrict {
+                contacts.removeAll { $0.id == contact.id }
+                contacts.insert(contact, at: 0)
+                cache.save(contacts, forKey: "contacts_\(selectedDistrict)")
+                showToast("⚡ New contact added: \(contact.name)")
+            }
+
+        case .contactUpdated(let contact):
+            if let idx = contacts.firstIndex(where: { $0.id == contact.id }) {
+                contacts[idx] = contact
+                cache.save(contacts, forKey: "contacts_\(selectedDistrict)")
+            }
+            if let favIdx = favoriteContacts.firstIndex(where: { $0.id == contact.id }) {
+                favoriteContacts[favIdx] = contact
+                cache.save(favoriteContacts, forKey: "favorite_contacts")
+            }
+            showToast("⚡ Live updated: \(contact.name)")
+
+        case .contactDeleted(let id):
+            contacts.removeAll { $0.id == id }
+            cache.save(contacts, forKey: "contacts_\(selectedDistrict)")
+
+        case .villageAdded(let village):
+            if village.district == nil || village.district == selectedDistrict {
+                villages.removeAll { $0.id == village.id }
+                villages.append(village)
+                cache.save(villages, forKey: "villages_\(selectedDistrict)")
+            }
+
+        case .villageDeleted(let id):
+            villages.removeAll { $0.id == id }
+            cache.save(villages, forKey: "villages_\(selectedDistrict)")
+
+        case .emergencyAdded(let em), .emergencyUpdated(let em):
+            if em.district == nil || em.district == selectedDistrict {
+                emergency.removeAll { $0.id == em.id }
+                emergency.append(em)
+                cache.save(emergency, forKey: "emergency_\(selectedDistrict)")
+            }
+
+        case .emergencyDeleted(let id):
+            emergency.removeAll { $0.id == id }
+            cache.save(emergency, forKey: "emergency_\(selectedDistrict)")
+
+        case .officeAdded(let off), .officeUpdated(let off):
+            if off.district == nil || off.district == selectedDistrict {
+                offices.removeAll { $0.id == off.id }
+                offices.append(off)
+                cache.save(offices, forKey: "offices_\(selectedDistrict)")
+            }
+
+        case .officeDeleted(let id):
+            offices.removeAll { $0.id == id }
+            cache.save(offices, forKey: "offices_\(selectedDistrict)")
+
+        case .broadcastReceived(let bcast):
+            if bcast.district == nil || bcast.district == selectedDistrict || bcast.district == "All" {
+                broadcasts.removeAll { $0.id == bcast.id }
+                broadcasts.insert(bcast, at: 0)
+                cache.save(broadcasts, forKey: "broadcasts_\(selectedDistrict)")
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                showToast("📢 New Notice: \(bcast.title)")
+            }
+
+        case .broadcastDeleted(let id):
+            broadcasts.removeAll { $0.id == id }
+            cache.save(broadcasts, forKey: "broadcasts_\(selectedDistrict)")
+
+        case .fullSyncRequired:
+            Task {
+                await fetchFreshData()
+            }
+
+        case .disconnected:
+            self.isLiveConnected = false
+            if isOffline {
+                self.syncStatusMessage = contacts.isEmpty ? "Offline (No cached data)" : "Offline Mode (\(contacts.count) Contacts)"
             }
         }
     }

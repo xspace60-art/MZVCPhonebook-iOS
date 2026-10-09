@@ -23,7 +23,8 @@ Built with **SwiftUI** (iOS 16.0+), supporting 100% offline caching, real-time s
 - **Government & District Offices**: Browse line departments, DC office, police, and collapsible staff directory cards.
 - **Emergency Directory**: DC Office, Police, Hospitals, Ambulance, and Fire & Emergency lines with high-visibility calling.
 - **District Announcements**: Live announcement banner and notification history modal.
-- **100% Offline Access**: Caches directory data locally on the iPhone so citizens can search and call even without an active internet connection.
+- ⚡ **Real-Time Push Engine (SSE)**: Streams live directory updates, newly appointed members, and urgent broadcasts straight from Oracle Cloud without requiring manual pull-to-refresh.
+- 100% Offline Access: Caches directory data locally on the iPhone so citizens can search and call even without an active internet connection.
 
 ---
 
@@ -33,7 +34,8 @@ Built with **SwiftUI** (iOS 16.0+), supporting 100% offline caching, real-time s
 MZVCPhonebook-iOS/
 ├── .github/
 │   └── workflows/
-│       └── build-ios.yml              # Cloud macOS GitHub Actions compiler
+│       └── build-ios.yml              # Cloud macOS compiler & TestFlight uploader
+├── TESTFLIGHT_DEPLOYMENT_GUIDE.md     # Automated TestFlight deployment instructions
 ├── MZVCPhonebook/
 │   ├── App/
 │   │   ├── MZVCPhonebookApp.swift     # Main @main App entry
@@ -48,6 +50,7 @@ MZVCPhonebook-iOS/
 │   │   └── AppInfo.swift              # Developer info & report payload models
 │   ├── Services/
 │   │   ├── APIService.swift           # Async/await REST API networking
+│   │   ├── RealtimeSyncService.swift  # Server-Sent Events (SSE) live push stream
 │   │   ├── CacheManager.swift         # Local persistent JSON cache for offline use
 │   │   └── PhonebookStore.swift       # ObservableObject state manager
 │   ├── Views/

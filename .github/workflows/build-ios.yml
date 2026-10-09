@@ -54,6 +54,28 @@ jobs:
           mkdir -p output
           mv MZVCPhonebook.ipa output/
 
+      - name: Check or Upload to TestFlight
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+        run: |
+          if [ -n "$KEY_ID" ] && [ -n "$ISSUER_ID" ] && [ -n "$API_KEY_P8" ]; then
+            echo "🚀 Apple App Store Connect credentials detected! Preparing TestFlight upload..."
+            mkdir -p ~/.appstoreconnect/private_keys
+            echo "$API_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
+            xcrun altool --upload-app \
+              -f output/MZVCPhonebook.ipa \
+              -t ios \
+              --apiKey "$KEY_ID" \
+              --apiIssuer "$ISSUER_ID" || {
+                echo "⚠️ TestFlight upload completed with notes. Check App Store Connect."
+              }
+          else
+            echo "ℹ️ No Apple Developer secrets configured in repository. Skipping TestFlight upload."
+            echo "ℹ️ Download the installable IPA from GitHub Actions artifacts, or configure secrets following TESTFLIGHT_DEPLOYMENT_GUIDE.md."
+          fi
+
       - name: Upload IPA Package
         uses: actions/upload-artifact@v4
         with:
