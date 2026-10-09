@@ -105,17 +105,19 @@ public struct ContactCardView: View {
                 .padding(.vertical, 2)
 
             // Action Buttons Row
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 // Call Button
                 Button {
                     store.makePhoneCall(number: contact.cleanPhone)
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 5) {
                         Image(systemName: "phone.fill")
                         Text("Call")
                             .fontWeight(.semibold)
                     }
                     .font(.system(size: 13))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .background(Color.green)
@@ -131,12 +133,14 @@ public struct ContactCardView: View {
                         contextName: "\(contact.villageName) \(contact.designation)"
                     )
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 5) {
                         Image(systemName: "message.fill")
                         Text("WhatsApp")
                             .fontWeight(.semibold)
                     }
                     .font(.system(size: 13))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .background(Color(red: 0.1, green: 0.7, blue: 0.4))
@@ -149,8 +153,8 @@ public struct ContactCardView: View {
                     store.copyToClipboard(text: contact.cleanPhone, label: contact.name)
                 } label: {
                     Image(systemName: "doc.on.doc")
-                        .font(.system(size: 14, weight: .semibold))
-                        .padding(9)
+                        .font(.system(size: 13, weight: .semibold))
+                        .padding(8)
                         .background(Color(.systemGray5))
                         .foregroundColor(.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -162,8 +166,8 @@ public struct ContactCardView: View {
                     store.isReportSheetPresented = true
                 } label: {
                     Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 14, weight: .semibold))
-                        .padding(9)
+                        .font(.system(size: 13, weight: .semibold))
+                        .padding(8)
                         .background(Color(.systemGray5))
                         .foregroundColor(.orange)
                         .clipShape(RoundedRectangle(cornerRadius: 10))

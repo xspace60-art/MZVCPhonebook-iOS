@@ -13,6 +13,11 @@ public final class APIService {
         return ""
     }
 
+    /// Official web portal URL for citizens
+    public var webPortalURL: String {
+        return "\(baseURL)/phonebook/"
+    }
+
     private let session: URLSession
 
     private init() {

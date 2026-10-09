@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct AboutView: View {
     @EnvironmentObject private var store: PhonebookStore
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     public var body: some View {
         NavigationStack {
@@ -185,9 +186,61 @@ public struct AboutView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                    // Web Directory & Live Server Card
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "safari.fill")
+                                .font(.system(size: 16))
+                                .foregroundColor(.blue)
+                            Text("Official Web Directory")
+                                .font(.system(size: 15, weight: .bold))
+                        }
+
+                        Text("Citizens and officials on Android or desktop browsers can also access the directory portal directly online.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+
+                        Divider()
+
+                        // Web Phonebook Portal Button
+                        if let portalUrl = URL(string: APIService.shared.webPortalURL) {
+                            Link(destination: portalUrl) {
+                                HStack {
+                                    Image(systemName: "globe")
+                                        .font(.system(size: 14))
+                                    Text("Open Citizen Web Portal")
+                                        .font(.system(size: 13, weight: .bold))
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right.square")
+                                        .font(.system(size: 13))
+                                }
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 14)
+                                .background(Color.accentColor.opacity(0.12))
+                                .foregroundColor(.accentColor)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                        }
+
+                        HStack {
+                            Text("Web Portal:")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(APIService.shared.webPortalURL)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .padding(16)
                 .padding(.bottom, 24)
+                .frame(maxWidth: horizontalSizeClass == .regular ? 720 : .infinity)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("About")

@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct OfficesView: View {
     @EnvironmentObject private var store: PhonebookStore
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var expandedOfficeIds: Set<String> = []
 
     public var body: some View {
@@ -108,6 +109,13 @@ public struct OfficesView: View {
                                 .foregroundColor(.secondary)
                         }
                         .padding(.vertical, 24)
+                    } else if horizontalSizeClass == .regular {
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+                            ForEach(store.filteredOffices) { office in
+                                officeCard(office)
+                            }
+                        }
+                        .padding(.horizontal, 24)
                     } else {
                         LazyVStack(spacing: 14) {
                             ForEach(store.filteredOffices) { office in
@@ -118,6 +126,7 @@ public struct OfficesView: View {
                     }
                 }
                 .padding(.bottom, 24)
+                .frame(maxWidth: horizontalSizeClass == .regular ? 1100 : .infinity)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("\(store.selectedDistrict) Offices")

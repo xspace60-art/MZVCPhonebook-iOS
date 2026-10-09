@@ -2,14 +2,23 @@ import SwiftUI
 
 public struct CouncilsView: View {
     @EnvironmentObject private var store: PhonebookStore
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Binding public var selectedTab: Int
 
     @State private var councilSearch: String = ""
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
+    private var columns: [GridItem] {
+        if horizontalSizeClass == .regular {
+            return [
+                GridItem(.adaptive(minimum: 220, maximum: 320), spacing: 14)
+            ]
+        } else {
+            return [
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12)
+            ]
+        }
+    }
 
     public var filteredVillages: [Village] {
         let q = councilSearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -116,6 +125,7 @@ public struct CouncilsView: View {
                     }
                 }
                 .padding(16)
+                .frame(maxWidth: horizontalSizeClass == .regular ? 1100 : .infinity)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Village Councils (\(store.villages.count))")

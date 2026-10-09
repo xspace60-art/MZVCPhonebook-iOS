@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct ContactsView: View {
     @EnvironmentObject private var store: PhonebookStore
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     public var body: some View {
         NavigationStack {
@@ -31,6 +32,13 @@ public struct ContactsView: View {
                         // Contacts List
                         if store.filteredContacts.isEmpty {
                             emptyStateView
+                        } else if horizontalSizeClass == .regular {
+                            LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+                                ForEach(store.filteredContacts) { contact in
+                                    ContactCardView(contact: contact)
+                                }
+                            }
+                            .padding(.horizontal, 24)
                         } else {
                             LazyVStack(spacing: 12) {
                                 ForEach(store.filteredContacts) { contact in
@@ -41,6 +49,7 @@ public struct ContactsView: View {
                         }
                     }
                     .padding(.bottom, 24)
+                    .frame(maxWidth: horizontalSizeClass == .regular ? 1100 : .infinity)
                 }
                 .background(Color(.systemGroupedBackground))
                 .refreshable {

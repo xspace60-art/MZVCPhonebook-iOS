@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct EmergencyView: View {
     @EnvironmentObject private var store: PhonebookStore
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     public var body: some View {
         NavigationStack {
@@ -35,14 +36,24 @@ public struct EmergencyView: View {
                     .padding(.horizontal, 16)
 
                     // Emergency Contacts List
-                    LazyVStack(spacing: 12) {
-                        ForEach(store.emergency) { em in
-                            emergencyCard(em)
+                    if horizontalSizeClass == .regular {
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+                            ForEach(store.emergency) { em in
+                                emergencyCard(em)
+                            }
                         }
+                        .padding(.horizontal, 24)
+                    } else {
+                        LazyVStack(spacing: 12) {
+                            ForEach(store.emergency) { em in
+                                emergencyCard(em)
+                            }
+                        }
+                        .padding(.horizontal, 16)
                     }
-                    .padding(.horizontal, 16)
                 }
                 .padding(.bottom, 24)
+                .frame(maxWidth: horizontalSizeClass == .regular ? 1100 : .infinity)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Emergency")
