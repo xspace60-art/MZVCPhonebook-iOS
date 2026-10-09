@@ -1,0 +1,51 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build MZVCPhonebook iOS App
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: |
+          sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Build Archive for Device
+        run: |
+          xcodebuild archive \
+            -project MZVCPhonebook.xcodeproj \
+            -scheme MZVCPhonebook \
+            -destination "generic/platform=iOS" \
+            -archivePath build/MZVCPhonebook.xcarchive \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package Installable IPA
+        run: |
+          mkdir -p Payload
+          cp -r build/MZVCPhonebook.xcarchive/Products/Applications/MZVCPhonebook.app Payload/
+          zip -qr MZVCPhonebook.ipa Payload
+          mkdir -p output
+          mv MZVCPhonebook.ipa output/
+
+      - name: Upload IPA Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: MZVCPhonebook-iOS-IPA
+          path: output/MZVCPhonebook.ipa
+
+      - name: Upload Full Xcode Archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: MZVCPhonebook-Xcode-Archive
+          path: build/MZVCPhonebook.xcarchive

@@ -1,0 +1,327 @@
+import SwiftUI
+
+public struct ContactsView: View {
+    @EnvironmentObject private var store: PhonebookStore
+
+    public var body: some View {
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    VStack(spacing: 14) {
+                        // District Banner / Header Top Bar
+                        headerBar
+
+                        // Active Announcement Banner
+                        if let broadcast = store.activeBroadcast {
+                            announcementBanner(broadcast)
+                        }
+
+                        // Search Bar
+                        searchBar
+
+                        // Category Filter Chips
+                        categoryChips
+
+                        // Role Filter & Counter Row
+                        roleFilterRow
+
+                        // Contacts List
+                        if store.filteredContacts.isEmpty {
+                            emptyStateView
+                        } else {
+                            LazyVStack(spacing: 12) {
+                                ForEach(store.filteredContacts) { contact in
+                                    ContactCardView(contact: contact)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                        }
+                    }
+                    .padding(.bottom, 24)
+                }
+                .background(Color(.systemGroupedBackground))
+                .refreshable {
+                    await store.fetchFreshData()
+                }
+
+                // In-App Toast
+                if let toast = store.toastMessage {
+                    toastView(toast)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.bottom, 16)
+                }
+            }
+            .navigationTitle("\(store.selectedDistrict) VC Phonebook")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        store.isDistrictPickerPresented = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 12))
+                            Text(store.selectedDistrict)
+                                .font(.system(size: 14, weight: .bold))
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 9, weight: .bold))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.accentColor.opacity(0.12))
+                        .foregroundColor(.accentColor)
+                        .clipShape(Capsule())
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 12) {
+                        // Notification Bell
+                        Button {
+                            store.isNotificationHistoryPresented = true
+                        } label: {
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "bell.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.primary)
+
+                                if !store.broadcasts.isEmpty {
+                                    Text("\(store.broadcasts.count)")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .frame(width: 15, height: 15)
+                                        .background(Color.red)
+                                        .clipShape(Circle())
+                                        .offset(x: 6, y: -6)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $store.isDistrictPickerPresented) {
+                DistrictPickerSheet()
+            }
+            .sheet(isPresented: $store.isNotificationHistoryPresented) {
+                NotificationHistorySheet()
+            }
+            .sheet(isPresented: $store.isReportSheetPresented) {
+                ReportCorrectionSheet()
+            }
+        }
+    }
+
+    // MARK: - Header Bar
+    private var headerBar: some View {
+        HStack {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(store.isOffline ? Color.orange : Color.green)
+                    .frame(width: 8, height: 8)
+                Text(store.syncStatusMessage)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Text("Village Council Directory")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+    }
+
+    // MARK: - Announcement Banner
+    private func announcementBanner(_ bcast: BroadcastNotice) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: bcast.isUrgent ? "exclamationmark.triangle.fill" : "megaphone.fill")
+                .font(.system(size: 18))
+                .foregroundColor(bcast.isUrgent ? .red : .blue)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(bcast.title)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.primary)
+                Text(bcast.message)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+
+                Button {
+                    store.isNotificationHistoryPresented = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.arrow.circlepath")
+                        Text("View History")
+                    }
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.accentColor)
+                }
+                .padding(.top, 2)
+            }
+
+            Spacer()
+
+            Button {
+                store.dismissCurrentBroadcast()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .padding(4)
+            }
+        }
+        .padding(12)
+        .background(bcast.isUrgent ? Color.red.opacity(0.1) : Color.blue.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(bcast.isUrgent ? Color.red.opacity(0.3) : Color.blue.opacity(0.3), lineWidth: 1)
+        )
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Search Bar
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.secondary)
+            TextField("Search name, village, role, phone...", text: $store.contactSearchText)
+                .font(.system(size: 14))
+
+            if !store.contactSearchText.isEmpty {
+                Button {
+                    store.contactSearchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Category Chips
+    private var categoryChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(store.uniqueCategories, id: \.self) { cat in
+                    let isSelected = store.selectedCategory == cat
+
+                    Button {
+                        store.selectedCategory = cat
+                    } label: {
+                        Text(cat == "All" ? "All VCs" : cat)
+                            .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(isSelected ? Color.accentColor : Color(.secondarySystemGroupedBackground))
+                            .foregroundColor(isSelected ? .white : .primary)
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    // MARK: - Role Filter & Counter Row
+    private var roleFilterRow: some View {
+        HStack {
+            Menu {
+                Button("All Designations") { store.selectedRole = "All" }
+                Button("VCP (President) / Chairman") { store.selectedRole = "President" }
+                Button("VCVP (Vice President)") { store.selectedRole = "Vice President" }
+                Button("VCS (Secretary)") { store.selectedRole = "Secretary" }
+                Button("Treasurer (VCT / LCT)") { store.selectedRole = "Treasurer" }
+                Button("Member (VCM)") { store.selectedRole = "Member" }
+                Button("Worker (VLW)") { store.selectedRole = "Worker" }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                    Text(roleMenuTitle)
+                        .font(.system(size: 13, weight: .semibold))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color(.secondarySystemGroupedBackground))
+                .foregroundColor(.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
+            Spacer()
+
+            Text("\(store.filteredContacts.count) Contacts")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 16)
+    }
+
+    private var roleMenuTitle: String {
+        switch store.selectedRole {
+        case "President": return "VCP / Chairman"
+        case "Vice President": return "VCVP"
+        case "Secretary": return "Secretary"
+        case "Treasurer": return "Treasurer"
+        case "Member": return "Member"
+        case "Worker": return "Worker"
+        default: return "All Designations"
+        }
+    }
+
+    // MARK: - Empty State
+    private var emptyStateView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "person.crop.circle.badge.questionmark")
+                .font(.system(size: 44))
+                .foregroundColor(.secondary)
+                .padding(.top, 32)
+            Text("No Contacts Found")
+                .font(.headline)
+            Text("Try searching for a different name, village or designation.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Button {
+                store.contactSearchText = ""
+                store.selectedCategory = "All"
+                store.selectedRole = "All"
+            } label: {
+                Text("Reset All Filters")
+                    .font(.system(size: 14, weight: .semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.accentColor.opacity(0.12))
+                    .foregroundColor(.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+    }
+
+    // MARK: - Toast
+    private func toastView(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color.black.opacity(0.85))
+            .clipShape(Capsule())
+            .shadow(radius: 6)
+    }
+}
