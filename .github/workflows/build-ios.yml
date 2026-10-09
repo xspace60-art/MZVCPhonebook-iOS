@@ -21,6 +21,7 @@ jobs:
 
       - name: Build App for iOS Device
         run: |
+          set -o pipefail
           xcodebuild \
             -project MZVCPhonebook.xcodeproj \
             -scheme MZVCPhonebook \
@@ -30,7 +31,11 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build 2>&1 | tee xcodebuild.log || {
+              echo "==================== BUILD ERROR LOG ===================="
+              tail -n 120 xcodebuild.log
+              exit 1
+            }
 
       - name: Package Installable IPA
         run: |
@@ -48,3 +53,10 @@ jobs:
           name: MZVCPhonebook-iOS-IPA
           path: output/MZVCPhonebook.ipa
           if-no-files-found: error
+
+      - name: Upload Full Build Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
