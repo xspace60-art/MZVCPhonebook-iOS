@@ -445,7 +445,11 @@ public struct PhonebookWebViewRepresentable: UIViewRepresentable {
 
             // 1. Direct Call: Instantly dial via iOS Phone app (tel://)
             if scheme == "tel" || scheme == "telprompt" {
-                let raw = url.resourceSpecifier ?? url.absoluteString.replacingOccurrences(of: "tel:", with: "").replacingOccurrences(of: "tel://", with: "")
+                let raw = url.absoluteString
+                    .replacingOccurrences(of: "telprompt://", with: "")
+                    .replacingOccurrences(of: "telprompt:", with: "")
+                    .replacingOccurrences(of: "tel://", with: "")
+                    .replacingOccurrences(of: "tel:", with: "")
                 let cleanDigits = raw.filter { $0.isNumber || $0 == "+" }
                 if let telURL = URL(string: "tel://\(cleanDigits)"), UIApplication.shared.canOpenURL(telURL) {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
